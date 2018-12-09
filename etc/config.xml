@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+        <!--
+        /**
+         * @copyright Copyright (c) 2018 Saul Morales Paccheco www.saulmoralespa.com
+         */
+        -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+<default>
+    <payment>
+        <neogateway>
+            <active>0</active>
+            <title>Neogateway</title>
+            <test>1</test>
+            <order_status>processing</order_status>
+            <model>Smp\Neogateway\Model\Neogateway</model>
+            <payment_action>authorize_capture</payment_action>
+            <cctypes>VI,MC</cctypes>
+            <allowspecific>0</allowspecific>
+        </neogateway>
+    </payment>
+</default>
+</config>
