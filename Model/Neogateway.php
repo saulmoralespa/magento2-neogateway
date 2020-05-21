@@ -137,10 +137,6 @@ class Neogateway extends \Magento\Payment\Model\Method\Cc
     {
             /** @var \Magento\Sales\Model\Order $order */
             $order = $payment->getOrder();
-            /** @var \Magento\Sales\Model\Order\Address $billing */
-            $billing = $order->getBillingAddress();
-            $shipping = $order->getShippingAddress();
-
 
             $info = $this->getInfoInstance();
 
@@ -156,15 +152,11 @@ class Neogateway extends \Magento\Payment\Model\Method\Cc
                 'cc_last_4'
             );
 
-
-            $card_number = $payment->getCcNumber();
-
             $month = sprintf('%02d',$payment->getCcExpMonth());
             $year =  substr($payment->getCcExpYear(), -2);
             $expireDate = "$month$year";
 
             $data_card_check = ['first_six_numbers' => $card_first_six_numbers, 'last_four_numbers' => $card_last_four_numbers];
-
 
             try {
 
@@ -236,7 +228,6 @@ class Neogateway extends \Magento\Payment\Model\Method\Cc
                 $payment->setTransactionId($sale_response->ResponseDetails->TransactionId)
                     ->setIsTransactionClosed(0);
 
-
             } catch (\Exception $e) {
                 $this->debugData(['request' => 'capture paymente neogateway', 'exception' => $e->getMessage()]);
                 $this->_neoLogger->debug($e->getMessage());
@@ -281,26 +272,23 @@ class Neogateway extends \Magento\Payment\Model\Method\Cc
 
     public function createCustomer($order)
     {
-        $billing = $order->getBillingAddress();
-        $shipping = $order->getShippingAddress();
 
-        $billing->getStreetLine(1);
-
-        $addresLine1 = empty($shipping->getStreetLine(1)) ? $billing->getStreetLine(1) : $shipping->getStreetLine(1);
-        $addresLine2 = empty($shipping->getStreetLine(2)) ? $addresLine1 : $shipping->getStreetLine(2);
-        $city = empty($shipping->getCity()) ? $billing->getCity() : $shipping->getCity();
-        $country = empty($shipping->getCountryId())  ? $billing->getCountryId() : $shipping->getCountryId();
-        $state = empty($shipping->getRegionCode()) ? $billing->getRegionCode() : $shipping->getRegionCode();
-        $zipCode = empty($shipping->getPostcode()) ? $billing->getPostcode() : $shipping->getPostcode();
+        $address = $this->getAddress($order);
+        $addresLine1 = $address->getData("street");
+        $addresLine2 = empty($address->getStreetLine(2)) ? $addresLine1 : $address->getStreetLine(2);
+        $city = $address->getCity();
+        $country = $address->getCountryId();
+        $state = $address->getRegionCode();
+        $zipCode = $address->getPostcode();
 
         $customer = new \MetropagoGateway\Customer();
 
-        $customer->Company = empty($billing->getCompany()) ? $billing->getName() : $billing->getCompany();
-        $customer->Email = $order->getCustomerEmail();
-        $customer->FirstName = $billing->getName();
-        $customer->LastName = $billing->getLastname();
-        $customer->Phone = $billing->getTelephone();
-        $customer->UniqueIdentifier = mt_rand() . $order->getCustomerId();
+        $customer->Company = empty($address->getCompany()) ? $address->getName() : $address->getCompany();
+        $customer->Email = $address->getCustomerEmail();
+        $customer->FirstName = $address->getName();
+        $customer->LastName = $address->getLastname();
+        $customer->Phone = $address->getTelephone();
+        $customer->UniqueIdentifier = mt_rand() . $address->getCustomerId();
 
         $customer->ShippingAddress = array();
         $ShippingAddress = new \MetropagoGateway\Address();
@@ -314,25 +302,19 @@ class Neogateway extends \Magento\Payment\Model\Method\Cc
 
         $customer->BillingAddress = array();
         $BillingAddress = new \MetropagoGateway\Address();
-        $BillingAddress->AddressLine1 = $billing->getStreetLine(1);
-        $BillingAddress->AddressLine2 = empty($billing->getStreetLine(2)) ? $billing->getStreetLine(1) : $billing->getStreetLine(2);
-        $BillingAddress->City = $billing->getCity();
-        $BillingAddress->CountryName = $billing->getCountryId();
-        $BillingAddress->State = $billing->getRegionCode();
-        $BillingAddress->ZipCode = $billing->getPostcode();
-        $customer->BillingAddress[] =$BillingAddress;
+        $BillingAddress->AddressLine1 = $addresLine1;
+        $BillingAddress->AddressLine2 = $addresLine2;
+        $BillingAddress->City = $address->getCity();
+        $BillingAddress->CountryName = $address->getCountryId();
+        $BillingAddress->State = $address->getRegionCode();
+        $BillingAddress->ZipCode = $address->getPostcode();
+        $customer->BillingAddress[] = $BillingAddress;
         return $customer;
 
     }
 
     public function addingCardCustomerModel( $data_user, $order, $payment)
     {
-
-        $order = $payment->getOrder();
-        $billing = $order->getBillingAddress();
-        $name = $billing->getName();
-        $lastName = $billing->getLastname();
-
 
         $customer  = new \MetropagoGateway\Customer();
         $customer->CreditCards = array();
@@ -427,5 +409,15 @@ class Neogateway extends \Magento\Payment\Model\Method\Cc
             return false;
         }
         return true;
+    }
+
+    public function getAddress($order)
+    {
+        $billingAddress = $order->getBillingAddress();
+        $shippingAddress = $order->getShippingAddress();
+        if ($billingAddress){
+            return $billingAddress;
+        }
+        return $shippingAddress;
     }
 }
