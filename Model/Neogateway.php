@@ -225,6 +225,9 @@ class Neogateway extends \Magento\Payment\Model\Method\Cc
                 //execute payment Perform Sale
                 $sale_response = $TrxManager->Sale($transRequest);
 
+                if(!$sale_response->ResponseDetails->IsSuccess)
+                    throw new \Exception($sale_response->ResponseDetails->ResponseSummary);
+
                 $payment->setTransactionId($sale_response->ResponseDetails->TransactionId)
                     ->setIsTransactionClosed(0);
 
